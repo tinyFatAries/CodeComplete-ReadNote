@@ -32,10 +32,26 @@ ___
 ___
 
 
+* #####P78 剖析工具与内存泄漏监测
+了解了**[Pareto principle](http://wikipedia.org/wiki/Pareto_principle)**
+ * 性能剖析工具： 
+**统计式剖析器(statistical profiler)：**Intel的 **[VTune](http://software.intel.com/en-us/intel-vtune-amplifier-xe)**
+**测控式剖析器(instrumental profiler):**IBM的 **[Rational Quantify](http://www.ibm.com/developerworks/rational/library/957.html)**
+ * 内存检测工具：IBM的IBM的 **[Rational Purify](http://www.ibm.com/developerworks/rational/library/957.html)**
+其实比较早就知道有类似**[valgrind](http://valgrind.org/downloads/current.html)**这类内存泄漏的监测工具，但是一直都没有使用过，出现了内存泄漏的问题都是不停的review，但是但是，人和猴子最大的区别不就是人会使用工具么。。。。
+
+___
+
 * #####P88 游戏中最常用的设计模式
  * **单例：**常用于构建引擎的各个子系统
  * **迭代器:**用于遍历游戏中大量的对象，需要十分高效的实现
  * **抽象工厂：**用于常见和管理游戏中的各类对象：玩家角色，AI，相机，游戏中的各类物体，资源如纹理，贴花，阴影等等，甚至是碰撞用的射线、包围盒等等
+___
+
+
+* #####P89 编码标准，为什么及该用多少
+如果创建了就请始终如一的坚持标准，这是作为团队中一员开发最重要的“道德”。
+另外，Json推荐了 [Making Wrong Code Look Wrong](http://www.joelonsoftware.com/articles/Wrong.html)
 ___
 
 
@@ -47,4 +63,48 @@ ___
 ___
 
 * ##### P118 捕捉及处理错误
-错误的捕捉和处理，一直是自己平时编码和写程序中，最最忽视掉的环节
+错误的捕捉和处理，一直是自己平时编码和写程序中，最最忽视掉的环节，然而，慢慢的，经过阅读了各种经典书籍后，才发现，错误的捕捉及处理，通常是一个软件项目中最重要的环节之一，固然，软件的算法效率是很重要的环节，新的牛X技术也是很重要的环节，然而，脱离了稳定性一切都是白搭，一个成熟的产品绝对不允许出现**在大多数情况下可以，偶尔会失效**的情况。
+推荐文章，所有问题皆无银弹：[no silver bullet](http://en.wikipedia.org/wiki/No_Silver_Bullet)
+* ######错误的大体分类：
+ * **用户错误(user error)**：用户错误，根据语境在游戏中又可以分为
+   * **玩家错误：**即输入错误，输入无效，对于玩家错误，需要尽可能的考虑周全，各种case都要面面俱到，关于这一点在今年网易游戏实习生笔试的时候印象太深刻了，其实三道题都不难，但是需要清晰地考虑各种边界条件，而这一点恰恰是自己在平时的编程过程中忽视掉的，以为主要的功能完成即可，确没有很深入的考虑异常情况的处理。
+   * **开发者错误：**即开发中，A用了B提供的函数，但使用了错误的参数等情况，这一点需要在提供接口时具有清晰的描述。
+ * **程序员错误(programmer error)**：代码本身存在bug，这种情况是绝对不允许的。
+___
+
+* ######错误监测及处理方法：
+ * **错误返回值**
+ 最常见的错误处理方式，通过返回值监测，返回bool型表示成功和失败，或利用错误编码来指定具体错误类型，这里强烈建议使用Enum来表示具体错误而不是简单的编号如1,2,3,(对于C语言可以用宏定义)，另外，如果错误码是通过全局变量指定的，还需要考虑到多线程情况下的同步问题。
+ * **异常**
+ 异常最大的优势就可以可以将程序的正常业务流程和错误处理完全分开，结构清晰，但是，异常通常伴随着庞大的系统开销，甚至是内存泄露等，Jason给出的建议是：
+ >因此，在主机游戏引擎中，有颇充分的理由去**完全关闭**掉异常处理，然而在PC中可以安然的使用异常，也贴出了相应的文章：
+ [Exceptions](http://www.joelonsoftware.com/items/2003/10/13.html)
+ [Exceptions2](http://www.joelonsoftware.com/items/2003/10/15.html)
+ [Exceptions vs. status returns](http://nedbatchelder.com/text/exceptions-vs-status.html)
+ * **断言**
+ 断言通常在调试期使用，最终的发行版将去掉所有的断言，有个很秒的比喻，**断言通常是为bug准备的地雷**，然而，一定要牢记，断言通常只用来捕获程序bug，而不是用户错误，因为断言失败的结果一定是**程序异常退出**。
+ 断言通常通过宏定义实现，然而利用宏实现断言时一定要注意红展开时的一些问题，举个例子：
+```cpp
+	#define ASSERT(expr) if(!(expr)) {reportAssertionFailure(#expr, __FILE__, __LINE__)}
+    void f()
+    {
+        if (a < 5)
+            ASSERT(a >= 0);
+        else //展开后对应了错误的if
+            doSomething();
+    }
+```
+```cpp
+#if ASSERTIONS_ENABLED
+		#define debugBreak() asm {int 3;}
+    	#define ASSERT(expr)\
+		if (expr) {} \ //正确的做法
+        else \
+		{ \
+        	reportAssertionFailure(#expr, __FILE__, __LINE__); \
+			debugBreak(); \
+        }
+#else
+		#define ASSERT(expr)
+#endif
+```
